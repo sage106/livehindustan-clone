@@ -1,0 +1,195 @@
+import { newsData } from '../../../lib/data';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import Image from 'next/image';
+import Link from 'next/link';
+
+// Get all article IDs for static generation
+export async function generateStaticParams() {
+  const allNews = [];
+  
+  Object.values(newsData.categories).forEach(category => {
+    allNews.push(...category);
+  });
+  
+  return allNews.map((news) => ({
+    id: news.id.toString(),
+  }));
+}
+
+// Fetch article data
+async function getArticle(id) {
+  // Search through all categories
+  for (const category of Object.values(newsData.categories)) {
+    const article = category.find(item => item.id.toString() === id);
+    if (article) return article;
+  }
+  
+  // Check hero section
+  if (newsData.hero.main.id.toString() === id) {
+    return newsData.hero.main;
+  }
+  
+  for (const item of newsData.hero.side) {
+    if (item.id.toString() === id) return item;
+  }
+  
+  return null;
+}
+
+// Generate metadata for SEO
+export async function generateMetadata({ params }) {
+  const article = await getArticle(params.id);
+  
+  if (!article) {
+    return {
+      title: 'Article Not Found',
+    };
+  }
+  
+  return {
+    title: `${article.title} - लाइव हिन्दुस्तान`,
+    description: article.description || article.title,
+    openGraph: {
+      title: article.title,
+      description: article.description || article.title,
+      images: [article.image],
+    },
+  };
+}
+
+export default async function ArticlePage({ params }) {
+  const article = await getArticle(params.id);
+  
+  if (!article) {
+    return (
+      <>
+        <Header />
+        <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>
+          <h1>लेख नहीं मिला</h1>
+          <Link href="/">
+            <button className="btn-load-more" style={{ marginTop: '20px' }}>
+              होम पर वापस जाएं
+            </button>
+          </Link>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Generate full article content
+  const fullContent = article.description || `${article.title} के बारे में विस्तृत जानकारी। यह एक डेमो लेख है जो दिखाता है कि कैसे Next.js में डायनामिक रूटिंग काम करती है। वास्तविक समाचार वेबसाइट में, यह कंटेंट एक API या डेटाबेस से आएगा।`;
+
+  return (
+    <>
+      <Header />
+      
+      <article className="article-page">
+        <div className="container">
+          <div className="article-container">
+            {/* Breadcrumb */}
+            <nav className="breadcrumb">
+              <Link href="/">होम</Link>
+              <span> / </span>
+              <span className="category-badge">{article.category}</span>
+              <span> / </span>
+              <span>लेख</span>
+            </nav>
+
+            {/* Article Header */}
+            <header className="article-header">
+              <h1 className="article-title">{article.title}</h1>
+              <div className="article-meta">
+                <span className="category-badge">{article.category}</span>
+                <span className="article-time">{article.time}</span>
+                {article.author && <span className="article-author">द्वारा: {article.author}</span>}
+              </div>
+            </header>
+
+            {/* Featured Image */}
+            <div className="article-image">
+              <Image
+                src={article.image}
+                alt={article.title}
+                width={1200}
+                height={600}
+                priority
+                className="article-img"
+              />
+            </div>
+
+            {/* Article Content */}
+            <div className="article-content">
+              <p className="article-lead">{article.description || article.title}</p>
+              
+              <p>
+                यह एक डेमो समाचार लेख है जो Next.js की डायनामिक रूटिंग क्षमताओं को प्रदर्शित करता है। 
+                वास्तविक परिदृश्य में, यह सामग्री एक API या CMS से आएगी।
+              </p>
+
+              <h2>मुख्य बिंदु</h2>
+              <ul>
+                <li>Next.js में डायनामिक रूटिंग का उपयोग किया गया है</li>
+                <li>SEO के लिए मेटाडेटा जोड़ा गया है</li>
+                <li>Image component का उपयोग करके images को optimize किया गया है</li>
+                <li>Server-side rendering के साथ बेहतर performance</li>
+              </ul>
+
+              <p>
+                {fullContent}
+              </p>
+
+              <h2>विस्तृत जानकारी</h2>
+              <p>
+                लाइव हिन्दुस्तान भारत की अग्रणी हिंदी समाचार वेबसाइट है। हम आपको देश-विदेश की ताज़ा खबरें, 
+                राजनीति, खेल, मनोरंजन, बिज़नेस और लाइफस्टाइल से जुड़ी हर जानकारी प्रदान करते हैं।
+              </p>
+
+              <p>
+                यह लेख Next.js 14 के App Router का उपयोग करके बनाया गया है, जो modern web development 
+                के best practices को follow करता है।
+              </p>
+            </div>
+
+            {/* Share Buttons */}
+            <div className="article-share">
+              <h3>इस लेख को शेयर करें:</h3>
+              <div className="share-buttons">
+                <button className="share-btn facebook">Facebook</button>
+                <button className="share-btn twitter">Twitter</button>
+                <button className="share-btn whatsapp">WhatsApp</button>
+                <button className="share-btn copy">Link Copy</button>
+              </div>
+            </div>
+
+            {/* Related Articles */}
+            <div className="related-articles">
+              <h2>संबंधित खबरें</h2>
+              <div className="related-grid">
+                {newsData.categories[article.category]
+                  ?.filter(item => item.id !== article.id)
+                  .slice(0, 3)
+                  .map((relatedArticle) => (
+                    <Link href={`/news/${relatedArticle.id}`} key={relatedArticle.id}>
+                      <div className="related-card">
+                        <Image
+                          src={relatedArticle.image}
+                          alt={relatedArticle.title}
+                          width={300}
+                          height={200}
+                        />
+                        <h4>{relatedArticle.title}</h4>
+                      </div>
+                    </Link>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+      
+      <Footer />
+    </>
+  );
+}
